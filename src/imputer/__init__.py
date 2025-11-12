@@ -13,8 +13,9 @@ Main classes:
     - BaselineImputer: Replace missing features with reference values
     - MarginalImputer: Sample missing features from marginal distribution
     - CoalitionMatrix: Representation of feature coalitions
+    - PatchGrouping: Group high-dimensional data into patches (NEW!)
 
-Example:
+Example (1D features):
     >>> import numpy as np
     >>> from imputer import BaselineImputer, CoalitionMatrix
     >>>
@@ -32,7 +33,30 @@ Example:
     [[1. 2. 0. 0.]
      [1. 0. 3. 0.]]
 
-For more examples, see the documentation at: https://imputer.readthedocs.io
+Example (high-dimensional images):
+    >>> import numpy as np
+    >>> from imputer import BaselineImputer, CoalitionMatrix, PatchGrouping
+    >>>
+    >>> # Setup
+    >>> image = np.random.randn(3, 224, 224)
+    >>> reference = np.zeros((3, 224, 224))
+    >>> 
+    >>> # Group into patches
+    >>> grouping = PatchGrouping(patch_size=(16, 16))
+    >>> x_grouped = grouping.fit_transform(image)
+    >>> ref_grouped = grouping.transform(reference)
+    >>> 
+    >>> # Coalition matrix operates on patches (not pixels!)
+    >>> S = CoalitionMatrix(np.eye(196))  # 196 patches
+    >>> 
+    >>> # Impute on grouped data
+    >>> imputer = BaselineImputer(reference=ref_grouped, x=x_grouped)
+    >>> imputed_grouped = imputer.impute(S)
+    >>> 
+    >>> # Reconstruct to original shape
+    >>> imputed_images = grouping.inverse_transform(imputed_grouped)
+    >>> print(imputed_images.shape)  # (196, 3, 224, 224)
+
 """
 
 __version__ = "0.1.0"
@@ -46,9 +70,11 @@ from imputer.core import (
     compute_mean,
     marginal_impute,
 )
+from imputer.grouping import FeatureGrouping, PatchGrouping
 
 __all__ = [
     "__version__",
+    # Core imputation
     "Imputer",
     "BaselineImputer",
     "MarginalImputer",
@@ -56,4 +82,7 @@ __all__ = [
     "baseline_impute",
     "marginal_impute",
     "compute_mean",
+    # Feature grouping
+    "FeatureGrouping",
+    "PatchGrouping",
 ]
