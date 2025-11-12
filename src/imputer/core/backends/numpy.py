@@ -26,7 +26,7 @@ def baseline_impute_numpy(
     Args:
         x: Data point to explain, shape (n_features,)
         reference: Reference values, shape (n_features,)
-        coalition_matrix: Binary coalition matrix, shape (n_coalitions, n_features)
+        coalition_matrix: Boolean coalition matrix (dtype=bool), shape (n_coalitions, n_features)
     
     Returns:
         Imputed data, shape (n_coalitions, n_features)
@@ -59,8 +59,9 @@ def baseline_impute_numpy(
     x_broadcast = np.tile(x, (n_coalitions, 1))
     reference_broadcast = np.tile(reference, (n_coalitions, 1))
     
-    # Apply coalition matrix: S=1 keeps x, S=0 uses reference
-    # imputed = coalition_matrix * x_broadcast + (1 - coalition_matrix) * reference_broadcast
+    # make sure coalition_matrix is boolean
+    if coalition_matrix.dtype != np.bool_:
+        coalition_matrix = coalition_matrix.astype(np.bool_)
     imputed = np.where(coalition_matrix, x_broadcast, reference_broadcast)
     
     return imputed
@@ -78,9 +79,9 @@ def marginal_impute_numpy(
     Args:
         x: Data point to explain, shape (n_features,)
         data: Background dataset, shape (n_background, n_features)
-        coalition_matrix: Binary coalition matrix, shape (n_coalitions, n_features)
+        coalition_matrix: Boolean coalition matrix (dtype=bool), shape (n_coalitions, n_features)
         n_samples: Number of samples per coalition
-    
+
     Returns:
         Imputed data, shape (n_coalitions, n_samples, n_features)
     
@@ -128,7 +129,12 @@ def marginal_impute_numpy(
         coalition_broadcast = np.tile(coalition, (n_samples, 1))
         
         # Apply coalition: S=1 keeps x, S=0 uses sampled data
-        imputed[i] = coalition_broadcast * x_broadcast + (1 - coalition_broadcast) * sampled_data
+        if coalition_matrix.dtype != np.bool_:
+            coalition_matrix = coalition_matrix.astype(np.bool_)
+
+        # np.where do boolean selection
+        imputed[i] = np.where(coalition_broadcast, x_broadcast, sampled_data)
+
     
     return imputed
 

@@ -20,12 +20,13 @@ def example_numpy():
     background_data = np.random.randn(100, 4)
     
     # Create coalition matrix (2 coalitions)
-    # Coalition 1: Keep features 0,1 (set to 1), impute features 2,3 (set to 0)
-    # Coalition 2: Keep features 0,2 (set to 1), impute features 1,3 (set to 0)
+    # Coalition 1: Keep features 0,1 (True), impute features 2,3 (False)
+    # Coalition 2: Keep features 0,2 (True), impute features 1,3 (False)
+
     S_matrix = np.array([
-        [1, 1, 0, 0],
-        [1, 0, 1, 0]
-    ])
+        [True, True, False, False],
+        [True, False, True, False]
+    ], dtype=bool)
     S = CoalitionMatrix(S_matrix)
     
     # Example 1: Baseline Imputation
@@ -71,9 +72,9 @@ def example_pytorch():
     reference = torch.zeros(4, device=device)
     
     S_matrix = torch.tensor([
-        [1., 1., 0., 0.],
-        [1., 0., 1., 0.]
-    ], device=device)
+        [True, True, False, False],
+        [True, False, True, False]
+    ], dtype=torch.bool, device=device)
     S = CoalitionMatrix(S_matrix)
     
     print("\nBaseline Imputation with PyTorch:")
@@ -106,9 +107,9 @@ def example_jax():
     reference = jnp.zeros(4)
     
     S_matrix = jnp.array([
-        [1., 1., 0., 0.],
-        [1., 0., 1., 0.]
-    ])
+        [True, True, False, False],
+        [True, False, True, False]
+    ], dtype=jnp.bool_)
     S = CoalitionMatrix(S_matrix)
     
     print("\nBaseline Imputation with JAX:")
@@ -159,11 +160,11 @@ def example_with_model():
     x = np.array([1.0, 2.0, 3.0, 4.0])
     reference = np.zeros(4)
     S_matrix = np.array([
-        [1, 1, 0, 0],  # Keep first 2 features
-        [1, 0, 1, 0],  # Keep 1st and 3rd features
-        [1, 1, 1, 1],  # Keep all features
-        [0, 0, 0, 0],  # Impute all features
-    ])
+        [True, True, False, False],  # Keep first 2 features
+        [True, False, True, False],  # Keep 1st and 3rd features
+        [True, True, True, True],     # Keep all features
+        [False, False, False, False], # Impute all features
+    ], dtype=bool)
     S = CoalitionMatrix(S_matrix)
     
     # Create imputer with model
@@ -176,10 +177,10 @@ def example_with_model():
     print(f"   Coalition matrix:\n{S_matrix}")
     print(f"   Predictions: {predictions}")
     print(f"\n   Explanation:")
-    print(f"   - Coalition [1,1,0,0]: sum([1,2,0,0]) = {predictions[0]}")
-    print(f"   - Coalition [1,0,1,0]: sum([1,0,3,0]) = {predictions[1]}")
-    print(f"   - Coalition [1,1,1,1]: sum([1,2,3,4]) = {predictions[2]}")
-    print(f"   - Coalition [0,0,0,0]: sum([0,0,0,0]) = {predictions[3]}")
+    print(f"   - Coalition [True,  True,  False, False]: sum([1,2,0,0]) = {predictions[0]}")
+    print(f"   - Coalition [True,  False, True,  False]: sum([1,0,3,0]) = {predictions[1]}")
+    print(f"   - Coalition [True,  True,  True,  True ]: sum([1,2,3,4]) = {predictions[2]}")
+    print(f"   - Coalition [False, False, False, False]: sum([0,0,0,0]) = {predictions[3]}")
 
 
 def main():

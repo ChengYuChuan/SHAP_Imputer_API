@@ -23,11 +23,11 @@ Model = TypeVar("Model")
 class CoalitionMatrix:
     """Represents a coalition matrix for game-theoretic model explanation.
     
-    A coalition matrix S is a binary matrix where:
+    A coalition matrix S is a boolean matrix where:
     - Rows represent different coalitions (subsets of features)
     - Columns represent features
-    - S[i,j] = 1 if feature j is in coalition i, 0 otherwise
-    
+    - S[i,j] = True if feature j is in coalition i, False otherwise
+
     Attributes:
         matrix: The underlying binary matrix (n_coalitions, n_features)
         n_coalitions: Number of coalitions
@@ -43,8 +43,28 @@ class CoalitionMatrix:
         Raises:
             ValueError: If matrix is not binary or has wrong dimensions
         """
-        self.matrix = matrix
+        self.matrix = self._ensure_boolean(matrix)
         self._validate()
+    def _ensure_boolean(self, matrix: ArrayLike) -> ArrayLike:
+        '''convert to boolean dtype'''
+        matrix_module = type(matrix).__module__.split('.')[0]
+        
+        if matrix_module == 'numpy':
+            import numpy as np
+            if matrix.dtype != np.bool_:
+                return matrix.astype(np.bool_)
+        
+        elif matrix_module == 'torch':
+            import torch
+            if matrix.dtype != torch.bool:
+                return matrix.to(torch.bool)
+        
+        elif matrix_module.startswith('jax'):
+            import jax.numpy as jnp
+            if matrix.dtype != jnp.bool_:
+                return matrix.astype(jnp.bool_)
+        
+        return matrix
     
     def _validate(self) -> None:
         """Validate coalition matrix properties."""

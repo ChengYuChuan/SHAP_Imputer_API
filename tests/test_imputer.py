@@ -19,7 +19,7 @@ class TestCoalitionMatrix:
     
     def test_creation(self):
         """Test basic creation of coalition matrix."""
-        S_array = np.array([[1, 1, 0], [1, 0, 1]])
+        S_array = np.array([[True, True, False], [True, False, True]], dtype=bool)
         S = CoalitionMatrix(S_array)
         
         assert S.n_coalitions == 2
@@ -28,7 +28,7 @@ class TestCoalitionMatrix:
     
     def test_single_coalition(self):
         """Test with a single coalition."""
-        S = CoalitionMatrix(np.array([[1, 0, 1, 0]]))
+        S = CoalitionMatrix(np.array([[True, False, True, False]], dtype=bool))
         
         assert S.n_coalitions == 1
         assert S.n_features == 4
@@ -42,10 +42,10 @@ class TestBaselineImputerNumpy:
         x = np.array([1.0, 2.0, 3.0, 4.0])
         reference = np.array([0.0, 0.0, 0.0, 0.0])
         S = CoalitionMatrix(np.array([
-            [1, 1, 0, 0],  # Keep first 2
-            [1, 0, 1, 0],  # Keep 1st and 3rd
-            [0, 0, 0, 0],  # Impute all
-        ]))
+            [True, True, False, False],  # Keep first 2
+            [True, False, True, False],  # Keep 1st and 3rd
+            [False, False, False, False], # Impute all
+        ], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=x)
         result = imputer.impute(S)
@@ -63,7 +63,7 @@ class TestBaselineImputerNumpy:
         """Test when all features are kept."""
         x = np.array([1.0, 2.0, 3.0])
         reference = np.array([9.0, 9.0, 9.0])
-        S = CoalitionMatrix(np.array([[1, 1, 1]]))
+        S = CoalitionMatrix(np.array([[True, True, True]], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=x)
         result = imputer.impute(S)
@@ -74,7 +74,7 @@ class TestBaselineImputerNumpy:
         """Test when all features are imputed."""
         x = np.array([1.0, 2.0, 3.0])
         reference = np.array([9.0, 9.0, 9.0])
-        S = CoalitionMatrix(np.array([[0, 0, 0]]))
+        S = CoalitionMatrix(np.array([[False, False, False]], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=x)
         result = imputer.impute(S)
@@ -84,7 +84,7 @@ class TestBaselineImputerNumpy:
     def test_error_no_x(self):
         """Test error when x is not provided."""
         reference = np.array([0.0, 0.0, 0.0])
-        S = CoalitionMatrix(np.array([[1, 0, 1]]))
+        S = CoalitionMatrix(np.array([[True, False, True]], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=None)
         
@@ -100,9 +100,9 @@ class TestMarginalImputerNumpy:
         x = np.array([1.0, 2.0, 3.0])
         data = np.random.randn(100, 3)
         S = CoalitionMatrix(np.array([
-            [1, 1, 0],
-            [1, 0, 1],
-        ]))
+            [True, True, False],
+            [True, False, True],
+        ], dtype=bool))
         
         imputer = MarginalImputer(data=data, x=x, n_samples=10)
         result = imputer.impute(S)
@@ -120,7 +120,7 @@ class TestMarginalImputerNumpy:
         """Test that imputed values come from data distribution."""
         x = np.array([999.0, 999.0, 999.0])  # Very different from data
         data = np.random.randn(100, 3)
-        S = CoalitionMatrix(np.array([[0, 0, 0]]))  # Impute all
+        S = CoalitionMatrix(np.array([[False, False, False]], dtype=bool))  # Impute all
         
         imputer = MarginalImputer(data=data, x=x, n_samples=50)
         result = imputer.impute(S)
@@ -151,7 +151,7 @@ class TestBackendCompatibility:
         # NumPy reference
         x_np = np.array([1.0, 2.0, 3.0, 4.0])
         ref_np = np.array([0.0, 0.0, 0.0, 0.0])
-        S_np = np.array([[1, 1, 0, 0], [1, 0, 1, 0]])
+        S_np = np.array([[True, True, False, False], [True, False, True, False]], dtype=bool)
         
         imputer_np = BaselineImputer(reference=ref_np, x=x_np)
         result_np = imputer_np.impute(CoalitionMatrix(S_np))
@@ -195,10 +195,10 @@ class TestModelIntegration:
         x = np.array([1.0, 2.0, 3.0, 4.0])
         reference = np.zeros(4)
         S = CoalitionMatrix(np.array([
-            [1, 1, 1, 1],  # All features: sum = 10
-            [1, 1, 0, 0],  # First 2: sum = 3
-            [0, 0, 0, 0],  # None: sum = 0
-        ]))
+            [True, True, True, True],     # All features: sum = 10
+            [True, True, False, False],   # First 2: sum = 3
+            [False, False, False, False], # None: sum = 0
+        ], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=x, model=model)
         predictions = imputer(S)
@@ -220,7 +220,7 @@ class TestModelIntegration:
         model = SimpleModel()
         x = np.array([1.0, 2.0])
         reference = np.zeros(2)
-        S = CoalitionMatrix(np.array([[1, 1]]))
+        S = CoalitionMatrix(np.array([[True, True]], dtype=bool))
         
         imputer = BaselineImputer(
             reference=reference,
@@ -244,7 +244,7 @@ class TestModelIntegration:
         model = ArrayModel()
         x = np.array([1.0, 2.0, 3.0])
         data = np.random.randn(100, 3)
-        S = CoalitionMatrix(np.array([[1, 1, 1]]))
+        S = CoalitionMatrix(np.array([[True, True, True]], dtype=bool))
         
         imputer = MarginalImputer(
             data=data,
@@ -267,7 +267,7 @@ class TestEdgeCases:
         """Test with single feature."""
         x = np.array([5.0])
         reference = np.array([0.0])
-        S = CoalitionMatrix(np.array([[1], [0]]))
+        S = CoalitionMatrix(np.array([[True], [False]], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=x)
         result = imputer.impute(S)
@@ -282,7 +282,7 @@ class TestEdgeCases:
         
         x = np.random.randn(n_features)
         reference = np.zeros(n_features)
-        S_matrix = np.random.randint(0, 2, (n_coalitions, n_features))
+        S_matrix = np.random.randint(0, 2, (n_coalitions, n_features)).astype(bool)
         S = CoalitionMatrix(S_matrix)
         
         imputer = BaselineImputer(reference=reference, x=x)
@@ -294,12 +294,49 @@ class TestEdgeCases:
         """Test error handling for shape mismatch."""
         x = np.array([1.0, 2.0, 3.0])
         reference = np.array([0.0, 0.0])  # Wrong shape!
-        S = CoalitionMatrix(np.array([[1, 1, 0]]))
+        S = CoalitionMatrix(np.array([[True, True, False]], dtype=bool))
         
         imputer = BaselineImputer(reference=reference, x=x)
         
         with pytest.raises(ValueError, match="doesn't match"):
             imputer.impute(S)
+            
+class TestBooleanCoalitionMatrix:
+    '''Tests for boolean coalition matrices.'''
+    
+    def test_boolean_dtype_preserved(self):
+        '''Test that boolean dtype is preserved.'''
+        S_bool = np.array([[True, False, True]], dtype=bool)
+        coal = CoalitionMatrix(S_bool)
+        
+        assert coal.matrix.dtype == np.bool_
+    
+    def test_numeric_auto_conversion(self):
+        '''Test automatic conversion from numeric to boolean.'''
+        S_numeric = np.array([[1, 0, 1], [0, 1, 0]])
+        coal = CoalitionMatrix(S_numeric)
+        
+        # Should be auto-converted to boolean
+        assert coal.matrix.dtype == np.bool_
+        assert np.array_equal(coal.matrix, S_numeric.astype(bool))
+    
+    def test_backward_compatibility(self):
+        '''Test that old numeric code still works.'''
+        x = np.array([1.0, 2.0, 3.0])
+        ref = np.zeros(3)
+        
+        # Old way: numeric 0/1
+        S_old = np.array([[1, 0, 1]], dtype=int)
+        imputer_old = BaselineImputer(reference=ref, x=x)
+        result_old = imputer_old.impute(CoalitionMatrix(S_old))
+        
+        # New way: boolean
+        S_new = np.array([[True, False, True]], dtype=bool)
+        imputer_new = BaselineImputer(reference=ref, x=x)
+        result_new = imputer_new.impute(CoalitionMatrix(S_new))
+        
+        # Should produce identical results
+        assert np.allclose(result_old, result_new)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ def baseline_impute_torch(
     Args:
         x: Data point to explain, shape (n_features,)
         reference: Reference values, shape (n_features,)
-        coalition_matrix: Binary coalition matrix, shape (n_coalitions, n_features)
+        coalition_matrix: Boolean coalition matrix (dtype=torch.bool), shape (n_coalitions, n_features)
     
     Returns:
         Imputed data, shape (n_coalitions, n_features)
@@ -66,9 +66,12 @@ def baseline_impute_torch(
     x_expanded = x.unsqueeze(0).expand(n_coalitions, -1)
     reference_expanded = reference.unsqueeze(0).expand(n_coalitions, -1)
     
-    # Apply coalition matrix: S=1 keeps x, S=0 uses reference
-    # This preserves gradients through both x and reference
-    imputed = coalition_matrix * x_expanded + (1 - coalition_matrix) * reference_expanded
+    # make sure that coalition_matrix is boolean
+    if coalition_matrix.dtype != torch.bool:
+        coalition_matrix = coalition_matrix.to(torch.bool)
+
+    imputed = torch.where(coalition_matrix, x_expanded, reference_expanded)
+
     
     return imputed
 
@@ -84,7 +87,7 @@ def marginal_impute_torch(
     Args:
         x: Data point to explain, shape (n_features,)
         data: Background dataset, shape (n_background, n_features)
-        coalition_matrix: Binary coalition matrix, shape (n_coalitions, n_features)
+        coalition_matrix: Boolean coalition matrix (dtype=torch.bool), shape (n_coalitions, n_features)
         n_samples: Number of samples per coalition
     
     Returns:
@@ -143,8 +146,11 @@ def marginal_impute_torch(
     # Expand coalition_matrix to (n_coalitions, n_samples, n_features)
     coalition_expanded = coalition_matrix.unsqueeze(1).expand(-1, n_samples, -1)
     
-    # Apply coalition: S=1 keeps x, S=0 uses sampled data
-    imputed = coalition_expanded * x_expanded + (1 - coalition_expanded) * sampled_data
+    # make sure that coalition_matrix is boolean
+    if coalition_matrix.dtype != torch.bool:
+        coalition_matrix = coalition_matrix.to(torch.bool)
+
+    imputed = torch.where(coalition_expanded, x_expanded, sampled_data)
     
     return imputed
 
