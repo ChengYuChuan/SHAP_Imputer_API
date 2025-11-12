@@ -19,7 +19,7 @@ from imputer.core.implementations import (
 def baseline_impute_numpy(
     x: np.ndarray,
     reference: np.ndarray,
-    coalition_matrix: np.ndarray,
+    coalition_matrix: np.ndarray, # dtype=bool
 ) -> np.ndarray:
     """Baseline imputation for NumPy arrays.
     
@@ -60,7 +60,8 @@ def baseline_impute_numpy(
     reference_broadcast = np.tile(reference, (n_coalitions, 1))
     
     # Apply coalition matrix: S=1 keeps x, S=0 uses reference
-    imputed = coalition_matrix * x_broadcast + (1 - coalition_matrix) * reference_broadcast
+    # imputed = coalition_matrix * x_broadcast + (1 - coalition_matrix) * reference_broadcast
+    imputed = np.where(coalition_matrix, x_broadcast, reference_broadcast)
     
     return imputed
 
