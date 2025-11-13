@@ -1,0 +1,43 @@
+import numpy as np
+from imputer import PatchGrouping, BaselineImputer, CoalitionMatrix
+
+# Setup
+image = np.random.randn(3, 224, 224)
+reference = np.zeros((3, 224, 224))
+
+# Grouping
+grouping = PatchGrouping(patch_size=(16, 16))
+x_grouped = grouping.fit_transform(image)
+ref_grouped = grouping.transform(reference)
+
+# 使用新的 property
+print(f"Features per patch: {grouping.features_per_patch}")  # 768
+print(f"Number of patches: {grouping.n_groups}")  # 196
+
+# Coalition matrix (2 coalitions)
+S_patches = CoalitionMatrix(np.array([
+    [True] * 98 + [False] * 98,   # Keep first half
+    [False] * 98 + [True] * 98    # Keep second half
+], dtype=bool))
+
+# Flatten
+x_flat = x_grouped.flatten()
+ref_flat = ref_grouped.flatten()
+
+# 使用新的 method - 更簡潔！
+S_expanded = grouping.expand_coalition_matrix(S_patches)
+print(f"Expanded coalition shape: {S_expanded.matrix.shape}")  # (2, 150528)
+
+# Impute
+imputer = BaselineImputer(reference=ref_flat, x=x_flat)
+imputed_flat = imputer.impute(S_expanded)
+
+# Reshape - 使用新的 property
+n_coalitions = S_patches.n_coalitions
+n_patches = grouping.n_groups
+features_per_patch = grouping.features_per_patch  # 使用 property
+imputed_grouped = imputed_flat.reshape(n_coalitions, n_patches, features_per_patch)
+
+# Inverse transform
+imputed_images = grouping.inverse_transform(imputed_grouped)
+print(f"Final shape: {imputed_images.shape}")  # (2, 3, 224, 224)

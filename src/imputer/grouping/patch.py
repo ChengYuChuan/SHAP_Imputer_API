@@ -223,6 +223,26 @@ class PatchGrouping(FeatureGrouping):
         
         return reconstructed
     
+    def expand_coalition_matrix(self, S: CoalitionMatrix) -> CoalitionMatrix:
+        """Expand patch-level coalition matrix to feature-level."""
+        from imputer.core.base import CoalitionMatrix as CM
+        
+        if self._original_shape is None:
+            msg = "Must call fit_transform first"
+            raise ValueError(msg)
+        
+        features_per_patch = self.features_per_patch
+        
+        if S.n_features != self.n_groups:
+            msg = (
+                f"Coalition matrix has {S.n_features} patches, "
+                f"but grouping has {self.n_groups} patches"
+            )
+            raise ValueError(msg)
+        
+        S_expanded = np.repeat(S.matrix, features_per_patch, axis=1)
+        return CM(S_expanded)
+
     @property
     def n_groups(self) -> int:
         """Number of patches."""
@@ -246,3 +266,30 @@ class PatchGrouping(FeatureGrouping):
             msg = "Must call fit_transform or transform first"
             raise ValueError(msg)
         return self._grid_shape
+    
+    @property
+    def features_per_patch(self) -> int:
+        """Number of features in each patch.
+        
+        Returns:
+            Number of features = channels × patch_volume
+            
+        Example:
+            >>> # RGB image (3 channels), 16×16 patches
+            >>> # features_per_patch = 3 × 16 × 16 = 768
+            >>> grouping = PatchGrouping(patch_size=(16, 16))
+            >>> x = np.random.randn(3, 224, 224)
+            >>> grouping.fit_transform(x)
+            >>> grouping.features_per_patch
+            768
+        
+        Raises:
+            ValueError: If fit_transform has not been called yet
+        """
+        if self._original_shape is None:
+            msg = "Must call fit_transform or transform first"
+            raise ValueError(msg)
+        
+        n_channels = self._original_shape[0]
+        patch_volume = int(np.prod(self.patch_size))
+        return n_channels * patch_volume
