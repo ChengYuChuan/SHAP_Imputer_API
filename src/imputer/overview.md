@@ -120,8 +120,7 @@ User code
 │  ┌───────────────────────────────────────────┐  │
 │  │ x_expanded = x.unsqueeze(0).expand(...)   │  │
 │  │ ref_expanded = ref.unsqueeze(0).expand()  │  │
-│  │ return S * x_expanded +                   │  │
-│  │        (1-S) * ref_expanded               │  │
+│  │ return (using where function. like np.where)|│
 │  └───────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────┘
   │
