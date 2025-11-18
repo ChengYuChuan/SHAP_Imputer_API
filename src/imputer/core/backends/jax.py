@@ -182,3 +182,69 @@ def compute_mean_jax(data: jax.Array, axis: int) -> jax.Array:
     import jax.numpy as jnp
     
     return jnp.mean(data, axis=axis)
+
+def compute_median_jax(data: jax.Array, axis: int) -> jax.Array:
+    """Compute median along axis for JAX arrays.
+    
+    Args:
+        data: Input array (n_samples, n_features)
+        axis: Axis along which to compute median
+    
+    Returns:
+        Median values
+    
+    Note:
+        JIT-compilable and differentiable.
+    
+    Example:
+        >>> import jax.numpy as jnp
+        >>> data = jax.random.normal(jax.random.PRNGKey(0), (100, 4))
+        >>> medians = compute_median_jax(data, axis=0)
+        >>> medians.shape
+        (4,)
+    """
+    import jax.numpy as jnp
+    
+    return jnp.median(data, axis=axis)
+
+
+def compute_mode_jax(data: jax.Array, axis: int) -> jax.Array:
+    """Compute mode along axis for JAX arrays.
+    
+    Args:
+        data: Input array (n_samples, n_features)
+        axis: Axis along which to compute mode
+    
+    Returns:
+        Mode values
+    
+    Note:
+        For continuous data, uses most frequent binned value.
+        Not as robust as scipy.stats.mode.
+    
+    Warning:
+        This is an approximation for JAX compatibility.
+        Consider rounding continuous data before calling.
+    
+    Example:
+        >>> import jax.numpy as jnp
+        >>> data = jax.random.randint(
+        ...     jax.random.PRNGKey(0), (100, 4), 0, 5
+        ... )
+        >>> modes = compute_mode_jax(data, axis=0)
+        >>> modes.shape
+        (4,)
+    """
+    import jax.numpy as jnp
+    from jax.scipy import stats as jax_stats
+    
+    # JAX doesn't have built-in mode, use workaround
+    # For each feature, find most common value
+    def mode_1d(x):
+        # Round to handle floating point
+        x_int = jnp.round(x).astype(jnp.int32)
+        values, counts = jnp.unique(x_int, return_counts=True)
+        return values[jnp.argmax(counts)].astype(x.dtype)
+    
+    # Apply along axis
+    return jnp.apply_along_axis(mode_1d, axis, data)

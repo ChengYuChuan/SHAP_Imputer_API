@@ -157,3 +157,49 @@ def compute_mean_numpy(data: np.ndarray, axis: int) -> np.ndarray:
         (10, 3)
     """
     return np.mean(data, axis=axis)
+
+@compute_median.register(np.ndarray)
+def compute_median_numpy(data: np.ndarray, axis: int) -> np.ndarray:
+    """Compute median along axis for NumPy arrays.
+    
+    Args:
+        data: Input array (n_samples, n_features)
+        axis: Axis along which to compute (typically 0)
+    
+    Returns:
+        Median values, shape (n_features,)
+    
+    Example:
+        >>> data = np.random.randn(100, 4)
+        >>> medians = compute_median_numpy(data, axis=0)
+        >>> medians.shape
+        (4,)
+    """
+    return np.median(data, axis=axis)
+
+
+@compute_mode.register(np.ndarray)
+def compute_mode_numpy(data: np.ndarray, axis: int) -> np.ndarray:
+    """Compute mode along axis for NumPy arrays.
+    
+    Args:
+        data: Input array (n_samples, n_features)
+        axis: Axis along which to compute mode
+    
+    Returns:
+        Mode values, shape (n_features,)
+    
+    Note:
+        Uses scipy.stats.mode for implementation.
+        For continuous data, mode may not be meaningful.
+    
+    Example:
+        >>> data = np.random.randint(0, 5, (100, 4))
+        >>> modes = compute_mode_numpy(data, axis=0)
+        >>> modes.shape
+        (4,)
+    """
+    from scipy import stats
+    
+    mode_result = stats.mode(data, axis=axis, keepdims=False)
+    return mode_result.mode

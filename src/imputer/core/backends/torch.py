@@ -178,3 +178,44 @@ def compute_mean_torch(data: torch.Tensor, axis: int) -> torch.Tensor:
     import torch
     
     return torch.mean(data, dim=axis)
+
+def compute_median_torch(data: torch.Tensor, axis: int) -> torch.Tensor:
+    """Compute median along axis for PyTorch tensors.
+    
+    Args:
+        data: Input tensor (n_samples, n_features)
+        axis: Axis along which to compute median
+    
+    Returns:
+        Median values
+    
+    Example:
+        >>> data = torch.randn(100, 4)
+        >>> medians = compute_median_torch(data, axis=0)
+        >>> medians.shape
+        torch.Size([4])
+    """
+    import torch
+    
+    return torch.median(data, dim=axis).values
+
+
+def compute_mode_torch(data: torch.Tensor, axis: int) -> torch.Tensor:
+    """Compute mode along axis for PyTorch tensors.
+    
+    Args:
+        data: Input tensor (n_samples, n_features)
+        axis: Axis along which to compute mode
+    
+    Returns:
+        Mode values
+    
+    Example:
+        >>> data = torch.randint(0, 5, (100, 4))
+        >>> modes = compute_mode_torch(data, axis=0)
+        >>> modes.shape
+        torch.Size([4])
+    """
+    import torch
+    
+    return torch.mode(data, dim=axis).values

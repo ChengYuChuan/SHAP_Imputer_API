@@ -92,6 +92,57 @@ def compute_mean(data: object, axis: int) -> object:
     msg = f"compute_mean not implemented for type {type(data).__name__}"
     raise NotImplementedError(msg)
 
+@ld.lazydispatch
+def compute_median(data: object, axis: int) -> object:
+    """Compute median along specified axis (abstract dispatcher).
+    
+    Args:
+        data: Input array (n_samples, n_features)
+        axis: Axis along which to compute median (typically 0)
+    
+    Returns:
+        Median values along axis
+    
+    Raises:
+        NotImplementedError: If backend not registered
+    
+    Example:
+        >>> data = np.random.randn(100, 4)
+        >>> medians = compute_median(data, axis=0)
+        >>> medians.shape
+        (4,)
+    """
+    msg = f"compute_median not implemented for type {type(data).__name__}"
+    raise NotImplementedError(msg)
+
+
+@ld.lazydispatch
+def compute_mode(data: object, axis: int) -> object:
+    """Compute mode along specified axis (abstract dispatcher).
+    
+    Args:
+        data: Input array (n_samples, n_features)
+        axis: Axis along which to compute mode
+    
+    Returns:
+        Mode values along axis
+    
+    Raises:
+        NotImplementedError: If backend not registered
+    
+    Note:
+        For continuous data, this may not be meaningful.
+        Primarily useful for categorical/discrete features.
+    
+    Example:
+        >>> data = np.random.randint(0, 5, (100, 4))
+        >>> modes = compute_mode(data, axis=0)
+        >>> modes.shape
+        (4,)
+    """
+    msg = f"compute_mode not implemented for type {type(data).__name__}"
+    raise NotImplementedError(msg)
+
 
 @ld.lazydispatch
 def sample_indices(
@@ -158,3 +209,30 @@ def _register_jax_mean(cls: type) -> None:
     """Register JAX mean computation when jax.Array is encountered."""
     from imputer.core.backends.jax import compute_mean_jax
     compute_mean.eager_register(cls, compute_mean_jax)
+
+@compute_median.delayed_register("torch.Tensor")
+def _register_torch_median(cls: type) -> None:
+    """Register torch median implementation."""
+    from imputer.core.backends.torch import compute_median_torch
+    compute_median.eager_register(cls, compute_median_torch)
+
+
+@compute_median.delayed_register("jax.Array")
+def _register_jax_median(cls: type) -> None:
+    """Register JAX median implementation."""
+    from imputer.core.backends.jax import compute_median_jax
+    compute_median.eager_register(cls, compute_median_jax)
+
+
+@compute_mode.delayed_register("torch.Tensor")
+def _register_torch_mode(cls: type) -> None:
+    """Register torch mode implementation."""
+    from imputer.core.backends.torch import compute_mode_torch
+    compute_mode.eager_register(cls, compute_mode_torch)
+
+
+@compute_mode.delayed_register("jax.Array")
+def _register_jax_mode(cls: type) -> None:
+    """Register JAX mode implementation."""
+    from imputer.core.backends.jax import compute_mode_jax
+    compute_mode.eager_register(cls, compute_mode_jax)

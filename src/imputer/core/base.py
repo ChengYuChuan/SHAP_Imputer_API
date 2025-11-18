@@ -6,6 +6,8 @@ that work across multiple ML frameworks (NumPy, PyTorch, JAX).
 
 from __future__ import annotations
 
+from enum import Enum
+from typing import Literal
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
@@ -19,6 +21,19 @@ ArrayLike = TypeVar("ArrayLike", np.ndarray, "torch.Tensor", "jax.Array")
 Predictions = TypeVar("Predictions")
 Model = TypeVar("Model")
 
+class ImputationStrategy(str, Enum):
+    """Imputation strategies for BaselineImputer.
+    
+    Strategies:
+        CONSTANT: Use fixed reference values
+        MEAN: Use mean from background data
+        MEDIAN: Use median from background data
+        MODE: Use mode from background data (categorical features)
+    """
+    CONSTANT = "constant"
+    MEAN = "mean"
+    MEDIAN = "median"
+    MODE = "mode"
 
 class CoalitionMatrix:
     """Represents a coalition matrix for game-theoretic model explanation.
@@ -68,8 +83,34 @@ class CoalitionMatrix:
     
     def _validate(self) -> None:
         """Validate coalition matrix properties."""
-        # Implementation depends on backend
-        pass
+        # make sure it's boolean dtype
+        if not self._is_boolean_dtype(self.matrix):
+            msg = (
+                f"Coalition matrix must have boolean dtype, "
+                f"got {self.matrix.dtype}. Use CoalitionMatrix constructor "
+                f"for automatic conversion."
+            )
+            raise TypeError(msg)
+        
+        # make sure it's 2D
+        if self.matrix.ndim != 2:
+            msg = f"Coalition matrix must be 2D, got shape {self.matrix.shape}"
+            raise ValueError(msg)
+
+    def _is_boolean_dtype(self, matrix: ArrayLike) -> bool:
+        """Check if matrix has boolean dtype across different backends."""
+        matrix_module = type(matrix).__module__.split('.')[0]
+        
+        if matrix_module == 'numpy':
+            import numpy as np
+            return matrix.dtype == np.bool_
+        elif matrix_module == 'torch':
+            import torch
+            return matrix.dtype == torch.bool
+        elif matrix_module.startswith('jax'):
+            import jax.numpy as jnp
+            return matrix.dtype == jnp.bool_
+        return False
     
     @property
     def n_coalitions(self) -> int:
@@ -191,63 +232,144 @@ class Imputer(ABC, Generic[ArrayLike, Predictions, Model]):
 
 
 class BaselineImputer(Imputer[ArrayLike, Predictions, Model]):
-    """Baseline imputation strategy.
+    """Baseline imputation with multiple strategies.
     
-    Replaces missing features with values from a reference point.
-    This is the simplest imputation strategy, often using a mean or 
-    a specific data point as the reference.
+    Supports:
+        - constant: fixed reference values
+        - mean: feature-wise mean from data
+        - median: feature-wise median from data
+        - mode: feature-wise mode from data
     
-    Reference:
-        Lundberg & Lee (2017): "A Unified Approach to Interpreting Model Predictions"
-        Section on "Baseline values"
-    
-    Attributes:
-        reference: Reference values to use for imputation (n_features,)
-        x: Data point to explain (n_features,)
+    Examples:
+        # Strategy 1: Constant (current behavior, backward compatible)
+        >>> imputer = BaselineImputer(
+        ...     strategy="constant",
+        ...     reference=np.zeros(4),
+        ...     x=x
+        ... )
+        
+        # Strategy 2: Mean
+        >>> imputer = BaselineImputer(
+        ...     strategy="mean",
+        ...     data=background_data,  # (n_samples, n_features)
+        ...     x=x
+        ... )
+        
+        # Strategy 3: Median
+        >>> imputer = BaselineImputer(
+        ...     strategy="median",
+        ...     data=background_data,
+        ...     x=x
+        ... )
     """
     
     def __init__(
         self,
-        reference: ArrayLike,
+        strategy: ImputationStrategy | Literal["constant", "mean", "median", "mode"] = "constant",
+        reference: ArrayLike | None = None,  # For CONSTANT strategy
+        data: ArrayLike | None = None,       # For MEAN/MEDIAN/MODE strategies
         x: ArrayLike | None = None,
         model: Model | None = None,
         predict_fn: Callable[[Model, ArrayLike], Predictions] | None = None,
     ) -> None:
-        """Initialize baseline imputer.
+        """Initialize baseline imputer with strategy.
         
         Args:
-            reference: Reference values for imputation (n_features,)
-            x: Data point to explain (n_features,). Can be set later.
+            strategy: Imputation strategy
+            reference: Reference values (required for "constant")
+            data: Background data (required for "mean"/"median"/"mode")
+            x: Data point to explain
             model: ML model to explain
             predict_fn: Custom prediction function
+        
+        Raises:
+            ValueError: If strategy="constant" but reference=None
+            ValueError: If strategy in ["mean","median","mode"] but data=None
         """
         super().__init__(model=model, predict_fn=predict_fn)
-        self.reference = reference
+        # Normalize strategy
+        if isinstance(strategy, str):
+            strategy = ImputationStrategy(strategy)
+        
+        self.strategy = strategy
         self.x = x
+        self._reference = reference
+        self._data = data
+
+        # Validate inputs
+        self._validate_strategy_inputs()
+
+    def _validate_strategy_inputs(self) -> None:
+        """Validate that required inputs are provided for strategy."""
+        if self.strategy == ImputationStrategy.CONSTANT:
+            if self._reference is None:
+                msg = (
+                    "strategy='constant' requires 'reference' argument. "
+                    "Provide fixed values for imputation."
+                )
+                raise ValueError(msg)
+        else:  # MEAN, MEDIAN, MODE
+            if self._data is None:
+                msg = (
+                    f"strategy='{self.strategy.value}' requires 'data' argument. "
+                    "Provide background dataset to compute statistics."
+                )
+                raise ValueError(msg)
+        
+    @property
+    def reference(self) -> ArrayLike:
+        """Get reference values based on strategy.
+        
+        Returns:
+            Reference values for imputation
+        
+        Raises:
+            ValueError: If data is not provided for statistical strategies
+        """
+        if self.strategy == ImputationStrategy.CONSTANT:
+            return self._reference
+        
+        # Compute statistics from data
+        if self._data is None:
+            msg = f"Data must be provided for strategy '{self.strategy.value}'"
+            raise ValueError(msg)
+        
+        if self.strategy == ImputationStrategy.MEAN:
+            from imputer.core.implementations import compute_mean
+            return compute_mean(self._data, axis=0)
+        
+        elif self.strategy == ImputationStrategy.MEDIAN:
+            from imputer.core.implementations import compute_median
+            return compute_median(self._data, axis=0)
+        
+        elif self.strategy == ImputationStrategy.MODE:
+            from imputer.core.implementations import compute_mode
+            return compute_mode(self._data, axis=0)
+        
+        else:
+            msg = f"Unknown strategy: {self.strategy}"
+            raise ValueError(msg)
     
     def impute(self, S: CoalitionMatrix) -> ArrayLike:
         """Impute using baseline strategy.
-        
-        For each coalition, keeps features where S[i,j]=1 from x,
-        and replaces features where S[i,j]=0 with reference values.
         
         Args:
             S: Coalition matrix (n_coalitions, n_features)
         
         Returns:
             Imputed data (n_coalitions, n_features)
-        
-        Raises:
-            ValueError: If x is not set
         """
         if self.x is None:
             msg = "Data point x must be set before imputation"
             raise ValueError(msg)
         
-        # Delegate to backend-specific implementation via lazy dispatch
+        # Get reference based on strategy
+        ref = self.reference
+        
+        # Delegate to backend-specific implementation
         from imputer.core.implementations import baseline_impute
         
-        return baseline_impute(self.x, self.reference, S.matrix)
+        return baseline_impute(self.x, ref, S.matrix)
 
 
 class MarginalImputer(Imputer[ArrayLike, Predictions, Model]):
