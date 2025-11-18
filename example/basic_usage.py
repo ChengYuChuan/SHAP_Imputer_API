@@ -20,8 +20,6 @@ def example_numpy():
     background_data = np.random.randn(100, 4)
     
     # Create coalition matrix (2 coalitions)
-    # Coalition 1: Keep features 0,1 (True), impute features 2,3 (False)
-    # Coalition 2: Keep features 0,2 (True), impute features 1,3 (False)
 
     S_matrix = np.array([
         [True, True, False, False],

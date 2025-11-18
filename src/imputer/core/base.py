@@ -38,15 +38,16 @@ class ImputationStrategy(str, Enum):
 class CoalitionMatrix:
     """Represents a coalition matrix for game-theoretic model explanation.
     
-    A coalition matrix S is a boolean matrix where:
-    - Rows represent different coalitions (subsets of features)
-    - Columns represent features
-    - S[i,j] = True if feature j is in coalition i, False otherwise
-
-    Attributes:
-        matrix: The underlying binary matrix (n_coalitions, n_features)
-        n_coalitions: Number of coalitions
-        n_features: Number of features
+    ⚠️ IMPORTANT: Coalition matrices MUST use boolean dtype.
+    Numeric arrays (0/1) will be automatically converted, but this is 
+    for backward compatibility only. Always use dtype=bool explicitly.
+    
+    Examples:
+        # ✅ CORRECT
+        S = CoalitionMatrix(np.array([[True, False]], dtype=bool))
+        
+        # ⚠️ DEPRECATED (auto-converted but discouraged)
+        S = CoalitionMatrix(np.array([[1, 0]]))
     """
     
     def __init__(self, matrix: ArrayLike) -> None:

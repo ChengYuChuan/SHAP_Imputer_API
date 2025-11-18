@@ -11,6 +11,8 @@ import numpy as np
 from imputer.core.implementations import (
     baseline_impute,
     compute_mean,
+    compute_median,
+    compute_mode,
     marginal_impute,
 )
 

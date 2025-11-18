@@ -313,7 +313,7 @@ class TestBooleanCoalitionMatrix:
     
     def test_numeric_auto_conversion(self):
         '''Test automatic conversion from numeric to boolean.'''
-        S_numeric = np.array([[1, 0, 1], [0, 1, 0]])
+        S_numeric = np.array([[True, False, True], [False, True, False]])
         coal = CoalitionMatrix(S_numeric)
         
         # Should be auto-converted to boolean
